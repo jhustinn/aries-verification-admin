@@ -19,6 +19,32 @@ export default function TicketsPage() {
     setLoading(false);
   }
 
+  function exportToCSV() {
+    const filteredTickets = filter === 'ALL' ? tickets : tickets.filter(t => t.ticket_status === filter);
+    
+    const headers = ['Ticket ID', 'User ID', 'In-Game Name', 'Player ID', 'Player Name', 'Level', 'Status', 'Created At', 'Screenshot URL'];
+    const rows = filteredTickets.map(t => [
+      t.ticket_id,
+      t.user_id,
+      t.in_game_name,
+      t.player_id || '-',
+      t.player_name || '-',
+      t.player_level || '-',
+      t.ticket_status,
+      new Date(t.created_at).toLocaleString(),
+      t.permanent_image_url
+    ]);
+
+    const csvContent = [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `verifications_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   async function handleStatusChange(
     ticketId: string,
     status: 'APPROVED' | 'REJECTED'
@@ -92,6 +118,12 @@ export default function TicketsPage() {
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
             >
               Refresh
+            </button>
+            <button
+              onClick={exportToCSV}
+              className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700"
+            >
+              Export CSV
             </button>
           </div>
         </div>
