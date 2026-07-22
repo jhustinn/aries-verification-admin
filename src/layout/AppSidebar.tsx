@@ -46,6 +46,11 @@ const navItems: NavItem[] = [
     path: "/profile",
   },
   {
+    icon: <PlugInIcon />,
+    name: "Settings",
+    path: "/settings",
+  },
+  {
     name: "Forms",
     icon: <ListIcon />,
     subItems: [{ name: "Form Elements", path: "/form-elements", pro: false }],
