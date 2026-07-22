@@ -17,11 +17,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check current session
+    // Check current session (Supabase v1)
     checkSession();
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+    // Listen for auth changes (Supabase v1)
+    const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (event === 'SIGNED_IN' && session) {
           setIsAuthenticated(true);
@@ -35,13 +35,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 
     return () => {
-      subscription.unsubscribe();
+      if (authListener?.unsubscribe) {
+        authListener.unsubscribe();
+      }
     };
   }, []);
 
   async function checkSession() {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const session = supabase.auth.session();
       if (session) {
         setIsAuthenticated(true);
         setUser(session.user);
@@ -55,7 +57,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function login(email: string, password: string) {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      // Supabase v1 API
+      const { user, error } = await supabase.auth.signIn({
         email,
         password,
       });
@@ -65,7 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       setIsAuthenticated(true);
-      setUser(data.user);
+      setUser(user);
       return { success: true };
     } catch (error: any) {
       return { success: false, error: error.message || 'Login failed' };
