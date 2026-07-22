@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router';
 import { useAuth } from '../../context/AuthContext';
 
 export default function SignIn() {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -16,11 +16,11 @@ export default function SignIn() {
     setLoading(true);
 
     try {
-      const success = await login(username, password);
-      if (success) {
+      const result = await login(email, password);
+      if (result.success) {
         navigate('/');
       } else {
-        setError('Invalid username or password');
+        setError(result.error || 'Invalid email or password');
       }
     } catch (err) {
       setError('Login failed. Please try again.');
@@ -50,18 +50,18 @@ export default function SignIn() {
 
           <div>
             <label
-              htmlFor="username"
+              htmlFor="email"
               className="block text-sm font-medium text-gray-700 dark:text-gray-300"
             >
-              Username
+              Email
             </label>
             <input
-              id="username"
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              placeholder="Enter username"
+              placeholder="admin@example.com"
               required
             />
           </div>
