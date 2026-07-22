@@ -1,6 +1,6 @@
 // ─── Discord API Service ──────────────────────────────────────────────────────
-const BOT_API_URL = import.meta.env.VITE_BOT_API_URL || 'https://f31abf2a-3472-4eb6-ada0-131201065074-00-3ese77mjsce3q.sisko.replit.dev';
-const API_KEY = import.meta.env.VITE_API_KEY || 'aries-admin-2024';
+const BOT_API_URL = 'https://f31abf2a-3472-4eb6-ada0-131201065074-00-3ese77mjsce3q.sisko.replit.dev';
+const API_KEY = 'aries-admin-2024';
 
 export interface DiscordMember {
   id: string;
