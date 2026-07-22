@@ -9,7 +9,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Admin credentials (in production, use environment variables or Supabase auth)
+// Admin credentials
 const ADMIN_CREDENTIALS = {
   username: 'admin',
   password: 'aries2024'
@@ -20,12 +20,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is already logged in
-    const authToken = localStorage.getItem('admin_auth');
-    if (authToken === 'authenticated') {
-      setIsAuthenticated(true);
-    }
-    setLoading(false);
+    // Check auth status synchronously
+    const checkAuth = () => {
+      try {
+        const authToken = localStorage.getItem('admin_auth');
+        setIsAuthenticated(authToken === 'authenticated');
+      } catch (error) {
+        setIsAuthenticated(false);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkAuth();
   }, []);
 
   async function login(username: string, password: string): Promise<boolean> {
