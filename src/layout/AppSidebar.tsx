@@ -32,6 +32,7 @@ const navItems: NavItem[] = [
     subItems: [
       { name: "Overview", path: "/", pro: false },
       { name: "Tickets", path: "/tickets", pro: false },
+      { name: "Users", path: "/users", pro: false },
     ],
   },
   {

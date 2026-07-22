@@ -20,6 +20,7 @@ import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/common/ProtectedRoute";
 import Home from "./pages/Dashboard/Home";
 import TicketsPage from "./pages/Tickets";
+import UsersPage from "./pages/Users";
 
 export default function App() {
   return (
@@ -31,6 +32,7 @@ export default function App() {
           <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
             <Route index path="/" element={<Home />} />
             <Route path="/tickets" element={<TicketsPage />} />
+            <Route path="/users" element={<UsersPage />} />
 
             {/* Others Page */}
             <Route path="/profile" element={<UserProfiles />} />
