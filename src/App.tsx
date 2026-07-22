@@ -21,6 +21,7 @@ import ProtectedRoute from "./components/common/ProtectedRoute";
 import Home from "./pages/Dashboard/Home";
 import TicketsPage from "./pages/Tickets";
 import UsersPage from "./pages/Users";
+import MembersPage from "./pages/Members";
 import SettingsPage from "./pages/Settings";
 
 export default function App() {
@@ -34,6 +35,7 @@ export default function App() {
             <Route index path="/" element={<Home />} />
             <Route path="/tickets" element={<TicketsPage />} />
             <Route path="/users" element={<UsersPage />} />
+            <Route path="/members" element={<MembersPage />} />
             <Route path="/settings" element={<SettingsPage />} />
 
             {/* Others Page */}
