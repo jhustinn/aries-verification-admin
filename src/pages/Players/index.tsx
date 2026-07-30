@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getPlayers, createPlayer, deletePlayer } from '../../lib/clan';
+import { getPlayers, createPlayer, deletePlayer } from '../../lib/database';
 import { getUsers } from '../../lib/supabase';
 import PageMeta from '../../components/common/PageMeta';
 
@@ -13,7 +13,12 @@ interface Player {
   timezone_offset: string;
   region: string;
   status: string;
+  notes: string | null;
+  verified_at: string;
+  verified_by: string | null;
+  ticket_id: string | null;
   created_at: string;
+  updated_at: string;
 }
 
 interface VerifiedUser {
@@ -65,7 +70,7 @@ export default function PlayersPage() {
     setLoading(true);
     try {
       const [playersResult, usersResult] = await Promise.all([
-        getPlayers({ limit: 100 }),
+        getPlayers(100),
         getUsers()
       ]);
       setPlayers(playersResult.data || []);

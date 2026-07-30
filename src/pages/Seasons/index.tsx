@@ -1,22 +1,8 @@
 import { useEffect, useState } from 'react';
-import { getSeasons, createSeason, getLeaderboard } from '../../lib/clan';
+import { getSeasons, createSeason, getSeasonLeaderboard, ClanSeason } from '../../lib/database';
 import PageMeta from '../../components/common/PageMeta';
 
-interface Season {
-  season_id: string;
-  season_name: string;
-  season_number: number;
-  start_date: string;
-  end_date: string;
-  duration_days: number;
-  status: string;
-  total_wars: number;
-  wins: number;
-  losses: number;
-  draws: number;
-  total_points_earned: number;
-  total_participants: number;
-}
+interface Season extends ClanSeason {}
 
 export default function SeasonsPage() {
   const [seasons, setSeasons] = useState<Season[]>([]);
@@ -38,8 +24,8 @@ export default function SeasonsPage() {
   async function loadSeasons() {
     setLoading(true);
     try {
-      const result = await getSeasons({ limit: 20 });
-      setSeasons(result.data || []);
+      const result = await getSeasons(20);
+      setSeasons(result || []);
     } catch (error) {
       console.error('Failed to load seasons:', error);
     } finally {
@@ -70,7 +56,7 @@ export default function SeasonsPage() {
   async function loadLeaderboard(seasonId: string) {
     setSelectedSeason(seasonId);
     try {
-      const data = await getLeaderboard(seasonId, 10);
+      const data = await getSeasonLeaderboard(seasonId, 10);
       setLeaderboard(data || []);
     } catch (error) {
       console.error('Failed to load leaderboard:', error);

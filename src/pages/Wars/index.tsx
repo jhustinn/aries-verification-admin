@@ -1,19 +1,9 @@
 import { useEffect, useState } from 'react';
-import { getWars, createWar, deleteWar } from '../../lib/clan';
+import { getWars, createWar, deleteWar, ClanWar } from '../../lib/database';
 import PageMeta from '../../components/common/PageMeta';
 
-interface War {
-  war_id: string;
-  opponent_name: string;
-  opponent_team: string;
-  war_type: string;
-  team_size: number;
-  scheduled_at: string;
-  status: string;
-  our_score: number | null;
-  their_score: number | null;
-  result: string | null;
-  created_at: string;
+interface War extends ClanWar {
+  team?: { team_id: string; team_name: string };
 }
 
 const WAR_TYPES = ['REGULAR', 'TOURNAMENT', 'SCRIMMAGE', 'PRACTICE'];
@@ -40,8 +30,8 @@ export default function WarsPage() {
   async function loadWars() {
     setLoading(true);
     try {
-      const result = await getWars({ limit: 50 });
-      setWars(result.data || []);
+      const result = await getWars(50, filterStatus !== 'ALL' ? filterStatus : undefined);
+      setWars(result || []);
     } catch (error) {
       console.error('Failed to load wars:', error);
     } finally {

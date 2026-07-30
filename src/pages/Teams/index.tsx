@@ -1,18 +1,9 @@
 import { useEffect, useState } from 'react';
-import { getTeams, createTeam, deleteTeam, getTeam, addTeamMember, removeTeamMember } from '../../lib/clan';
-import { getPlayers } from '../../lib/clan';
+import { getTeams, createTeam, deleteTeam, getTeam, addTeamMember, removeTeamMember, getPlayers, ClanTeam } from '../../lib/database';
 import PageMeta from '../../components/common/PageMeta';
 
-interface Team {
-  team_id: string;
-  team_name: string;
-  team_tier: string;
-  description: string;
-  max_members: number;
-  captain_player_id: string;
-  is_active: boolean;
+interface Team extends ClanTeam {
   members?: any[];
-  created_at: string;
 }
 
 interface Player {
@@ -49,10 +40,10 @@ export default function TeamsPage() {
     setLoading(true);
     try {
       const [teamsResult, playersResult] = await Promise.all([
-        getTeams({ limit: 50 }),
-        getPlayers({ limit: 100 })
+        getTeams(50),
+        getPlayers(100)
       ]);
-      setTeams(teamsResult.data || []);
+      setTeams(teamsResult || []);
       setPlayers(playersResult.data || []);
     } catch (error) {
       console.error('Failed to load data:', error);
