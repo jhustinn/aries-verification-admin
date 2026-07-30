@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getPlayers, createPlayer, deletePlayer } from '../../lib/clan';
+import { getUsers } from '../../lib/supabase';
 import PageMeta from '../../components/common/PageMeta';
 
 interface Player {
@@ -13,6 +14,12 @@ interface Player {
   region: string;
   status: string;
   created_at: string;
+}
+
+interface VerifiedUser {
+  user_id: string;
+  username: string;
+  joined_at: string;
 }
 
 const TIMEZONES = [
@@ -33,6 +40,7 @@ const REGIONS = ['ASIA', 'EU', 'NA', 'SA', 'OCEANIA', 'AFRICA'];
 
 export default function PlayersPage() {
   const [players, setPlayers] = useState<Player[]>([]);
+  const [verifiedUsers, setVerifiedUsers] = useState<VerifiedUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterRegion, setFilterRegion] = useState('ALL');
@@ -46,21 +54,42 @@ export default function PlayersPage() {
     clan_tag: 'ARIES',
     timezone: 'Asia/Jakarta',
     region: 'ASIA',
+    discord_user_id: '',
   });
 
   useEffect(() => {
-    loadPlayers();
+    loadData();
   }, []);
 
-  async function loadPlayers() {
+  async function loadData() {
     setLoading(true);
     try {
-      const result = await getPlayers({ limit: 100 });
-      setPlayers(result.data || []);
+      const [playersResult, usersResult] = await Promise.all([
+        getPlayers({ limit: 100 }),
+        getUsers()
+      ]);
+      setPlayers(playersResult.data || []);
+      setVerifiedUsers(usersResult || []);
     } catch (error) {
-      console.error('Failed to load players:', error);
+      console.error('Failed to load data:', error);
     } finally {
       setLoading(false);
+    }
+  }
+
+  // Get verified users who are NOT yet players
+  const availableUsers = verifiedUsers.filter(
+    user => !players.some(p => p.discord_user_id === user.user_id)
+  );
+
+  function handleSelectUser(userId: string) {
+    const user = verifiedUsers.find(u => u.user_id === userId);
+    if (user) {
+      setFormData({
+        ...formData,
+        discord_user_id: user.user_id,
+        player_name: user.username,
+      });
     }
   }
 
@@ -73,10 +102,11 @@ export default function PlayersPage() {
         ...formData,
         player_level: parseInt(formData.player_level.toString()),
         timezone_offset: tz?.offset || 'UTC+0',
+        discord_user_id: formData.discord_user_id || null,
       });
       setShowCreateModal(false);
-      setFormData({ player_id: '', player_name: '', player_level: 1, clan_tag: 'ARIES', timezone: 'Asia/Jakarta', region: 'ASIA' });
-      await loadPlayers();
+      setFormData({ player_id: '', player_name: '', player_level: 1, clan_tag: 'ARIES', timezone: 'Asia/Jakarta', region: 'ASIA', discord_user_id: '' });
+      await loadData();
     } catch (error) {
       console.error('Failed to create player:', error);
       alert('Failed to create player. Check console for details.');
@@ -89,7 +119,7 @@ export default function PlayersPage() {
     if (confirm(`Are you sure you want to delete player "${playerName}"?`)) {
       try {
         await deletePlayer(playerId);
-        await loadPlayers();
+        await loadData();
       } catch (error) {
         console.error('Failed to delete player:', error);
       }
@@ -113,16 +143,14 @@ export default function PlayersPage() {
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Players</h2>
-            <p className="text-gray-500 dark:text-gray-400">{players.length} verified players</p>
+            <p className="text-gray-500 dark:text-gray-400">
+              {players.length} players • {availableUsers.length} verified users available
+            </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <input
-              type="text"
-              placeholder="Search players..."
-              value={search}
+            <input type="text" placeholder="Search players..." value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-            />
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
             <select value={filterRegion} onChange={(e) => setFilterRegion(e.target.value)}
               className="px-4 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
               <option value="ALL">All Regions</option>
@@ -133,14 +161,12 @@ export default function PlayersPage() {
               <option value="ALL">All Status</option>
               <option value="ACTIVE">Active</option>
               <option value="INACTIVE">Inactive</option>
-              <option value="LEFT_CLAN">Left Clan</option>
-              <option value="BANNED">Banned</option>
             </select>
             <button onClick={() => setShowCreateModal(true)}
               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">
               + Add Player
             </button>
-            <button onClick={loadPlayers}
+            <button onClick={loadData}
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300">
               Refresh
             </button>
@@ -160,6 +186,7 @@ export default function PlayersPage() {
                 <thead>
                   <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
                     <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Player ID</th>
+                    <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Discord</th>
                     <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Name</th>
                     <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Level</th>
                     <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Clan</th>
@@ -173,6 +200,17 @@ export default function PlayersPage() {
                   {filteredPlayers.map((player) => (
                     <tr key={player.player_id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50">
                       <td className="px-6 py-4 font-mono text-xs text-gray-800 dark:text-gray-200">{player.player_id}</td>
+                      <td className="px-6 py-4">
+                        {player.discord_user_id ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                            ✓ Linked
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400">
+                            ✗ No Discord
+                          </span>
+                        )}
+                      </td>
                       <td className="px-6 py-4 font-medium text-gray-800 dark:text-gray-200">{player.player_name}</td>
                       <td className="px-6 py-4 text-gray-500 dark:text-gray-400">{player.player_level}</td>
                       <td className="px-6 py-4 text-gray-500 dark:text-gray-400">{player.clan_tag}</td>
@@ -210,8 +248,23 @@ export default function PlayersPage() {
                 <button onClick={() => setShowCreateModal(false)} className="text-gray-500 hover:text-gray-700 dark:text-gray-400">✕</button>
               </div>
               <form onSubmit={handleCreate} className="space-y-4">
+                {/* Select from verified Discord users */}
+                {availableUsers.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Select Verified Discord User (Optional)</label>
+                    <select value={formData.discord_user_id}
+                      onChange={(e) => handleSelectUser(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                      <option value="">-- Select User --</option>
+                      {availableUsers.map(user => (
+                        <option key={user.user_id} value={user.user_id}>{user.username} ({user.user_id})</option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">Auto-fills Player Name from Discord username</p>
+                  </div>
+                )}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Player ID (Hex)</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Player ID (Hex from game)</label>
                   <input type="text" required value={formData.player_id}
                     onChange={(e) => setFormData({ ...formData, player_id: e.target.value })}
                     placeholder="e.g., 8B38C96F59232BD0"

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { getTeams, createTeam, deleteTeam } from '../../lib/clan';
+import { getTeams, createTeam, deleteTeam, getTeam, addTeamMember, removeTeamMember } from '../../lib/clan';
+import { getPlayers } from '../../lib/clan';
 import PageMeta from '../../components/common/PageMeta';
 
 interface Team {
@@ -10,15 +11,26 @@ interface Team {
   max_members: number;
   captain_player_id: string;
   is_active: boolean;
+  members?: any[];
   created_at: string;
+}
+
+interface Player {
+  player_id: string;
+  player_name: string;
+  player_level: number;
 }
 
 const TIERS = ['MAIN', 'SECONDARY', 'ACADEMY', 'RESERVE'];
 
 export default function TeamsPage() {
   const [teams, setTeams] = useState<Team[]>([]);
+  const [players, setPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showAddMemberModal, setShowAddMemberModal] = useState(false);
+  const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
   const [creating, setCreating] = useState(false);
   const [formData, setFormData] = useState({
     team_name: '',
@@ -26,20 +38,36 @@ export default function TeamsPage() {
     description: '',
     max_members: 5,
   });
+  const [selectedPlayerId, setSelectedPlayerId] = useState('');
+  const [memberRole, setMemberRole] = useState('MEMBER');
 
   useEffect(() => {
-    loadTeams();
+    loadData();
   }, []);
 
-  async function loadTeams() {
+  async function loadData() {
     setLoading(true);
     try {
-      const result = await getTeams({ limit: 50 });
-      setTeams(result.data || []);
+      const [teamsResult, playersResult] = await Promise.all([
+        getTeams({ limit: 50 }),
+        getPlayers({ limit: 100 })
+      ]);
+      setTeams(teamsResult.data || []);
+      setPlayers(playersResult.data || []);
     } catch (error) {
-      console.error('Failed to load teams:', error);
+      console.error('Failed to load data:', error);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadTeamDetail(teamId: string) {
+    try {
+      const team = await getTeam(teamId);
+      setSelectedTeam(team);
+      setShowDetailModal(true);
+    } catch (error) {
+      console.error('Failed to load team detail:', error);
     }
   }
 
@@ -50,10 +78,10 @@ export default function TeamsPage() {
       await createTeam(formData);
       setShowCreateModal(false);
       setFormData({ team_name: '', team_tier: 'MAIN', description: '', max_members: 5 });
-      await loadTeams();
+      await loadData();
     } catch (error) {
       console.error('Failed to create team:', error);
-      alert('Failed to create team. Check console for details.');
+      alert('Failed to create team.');
     } finally {
       setCreating(false);
     }
@@ -63,12 +91,45 @@ export default function TeamsPage() {
     if (confirm(`Delete team "${teamName}"?`)) {
       try {
         await deleteTeam(teamId);
-        await loadTeams();
+        await loadData();
       } catch (error) {
         console.error('Failed to delete team:', error);
       }
     }
   }
+
+  async function handleAddMember() {
+    if (!selectedTeam || !selectedPlayerId) return;
+    try {
+      await addTeamMember(selectedTeam.team_id, selectedPlayerId, memberRole);
+      setShowAddMemberModal(false);
+      setSelectedPlayerId('');
+      setMemberRole('MEMBER');
+      await loadTeamDetail(selectedTeam.team_id);
+      await loadData();
+    } catch (error) {
+      console.error('Failed to add member:', error);
+      alert('Failed to add member.');
+    }
+  }
+
+  async function handleRemoveMember(playerId: string) {
+    if (!selectedTeam) return;
+    if (confirm('Remove this player from the team?')) {
+      try {
+        await removeTeamMember(selectedTeam.team_id, playerId);
+        await loadTeamDetail(selectedTeam.team_id);
+        await loadData();
+      } catch (error) {
+        console.error('Failed to remove member:', error);
+      }
+    }
+  }
+
+  // Get players not in selected team
+  const availablePlayers = players.filter(
+    p => !selectedTeam?.members?.some((m: any) => m.player_id === p.player_id)
+  );
 
   function getTierBadge(tier: string) {
     const styles: Record<string, string> = {
@@ -94,7 +155,7 @@ export default function TeamsPage() {
               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">
               + Create Team
             </button>
-            <button onClick={loadTeams}
+            <button onClick={loadData}
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300">
               Refresh
             </button>
@@ -125,8 +186,9 @@ export default function TeamsPage() {
                   </span>
                 </div>
                 <div className="flex gap-2">
-                  <button className="flex-1 px-3 py-2 text-xs font-medium text-blue-600 bg-blue-100 rounded hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400">
-                    View
+                  <button onClick={() => loadTeamDetail(team.team_id)}
+                    className="flex-1 px-3 py-2 text-xs font-medium text-blue-600 bg-blue-100 rounded hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400">
+                    View Members
                   </button>
                   <button className="flex-1 px-3 py-2 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300">
                     Edit
@@ -141,13 +203,105 @@ export default function TeamsPage() {
           </div>
         )}
 
-        {!loading && teams.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-gray-500 dark:text-gray-400">No teams found. Create your first team!</p>
+        {/* Team Detail Modal */}
+        {showDetailModal && selectedTeam && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-gray-800 dark:text-white">
+                  {selectedTeam.team_name} - Members
+                </h3>
+                <button onClick={() => setShowDetailModal(false)} className="text-gray-500 hover:text-gray-700 dark:text-gray-400">✕</button>
+              </div>
+
+              <div className="mb-4 flex justify-between items-center">
+                <p className="text-sm text-gray-500">
+                  {selectedTeam.members?.length || 0} / {selectedTeam.max_members} members
+                </p>
+                <button onClick={() => setShowAddMemberModal(true)}
+                  className="px-3 py-1 text-sm font-medium text-white bg-green-600 rounded hover:bg-green-700">
+                  + Add Member
+                </button>
+              </div>
+
+              {selectedTeam.members && selectedTeam.members.length > 0 ? (
+                <div className="space-y-2">
+                  {selectedTeam.members.map((member: any) => (
+                    <div key={member.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                      <div>
+                        <p className="font-medium text-gray-800 dark:text-white">
+                          {member.player?.player_name || member.player_id}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          Level {member.player?.player_level || '?'} • {member.player?.timezone || 'UTC'}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-0.5 rounded text-xs ${
+                          member.role === 'CAPTAIN' ? 'bg-yellow-100 text-yellow-800' :
+                          member.role === 'VICE_CAPTAIN' ? 'bg-blue-100 text-blue-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {member.role}
+                        </span>
+                        <button onClick={() => handleRemoveMember(member.player_id)}
+                          className="px-2 py-1 text-xs text-red-600 bg-red-100 rounded hover:bg-red-200">
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-center py-8 text-gray-500">No members in this team yet</p>
+              )}
+            </div>
           </div>
         )}
 
-        {/* Create Modal */}
+        {/* Add Member Modal */}
+        {showAddMemberModal && selectedTeam && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Add Member to {selectedTeam.team_name}</h3>
+                <button onClick={() => setShowAddMemberModal(false)} className="text-gray-500 hover:text-gray-700 dark:text-gray-400">✕</button>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Select Player</label>
+                  <select value={selectedPlayerId} onChange={(e) => setSelectedPlayerId(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    <option value="">-- Select Player --</option>
+                    {availablePlayers.map(p => (
+                      <option key={p.player_id} value={p.player_id}>{p.player_name} (Level {p.player_level})</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Role</label>
+                  <select value={memberRole} onChange={(e) => setMemberRole(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    <option value="MEMBER">Member</option>
+                    <option value="VICE_CAPTAIN">Vice Captain</option>
+                    <option value="CAPTAIN">Captain</option>
+                    <option value="RESERVE">Reserve</option>
+                  </select>
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <button onClick={() => setShowAddMemberModal(false)}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">Cancel</button>
+                  <button onClick={handleAddMember} disabled={!selectedPlayerId}
+                    className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50">
+                    Add to Team
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Create Team Modal */}
         {showCreateModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
@@ -175,7 +329,6 @@ export default function TeamsPage() {
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
                   <textarea value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    placeholder="Team description..."
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white" rows={3} />
                 </div>
                 <div>
@@ -186,7 +339,7 @@ export default function TeamsPage() {
                 </div>
                 <div className="flex gap-2 justify-end pt-4">
                   <button type="button" onClick={() => setShowCreateModal(false)}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300">Cancel</button>
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg">Cancel</button>
                   <button type="submit" disabled={creating}
                     className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50">
                     {creating ? 'Creating...' : 'Create Team'}
