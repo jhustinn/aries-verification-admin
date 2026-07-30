@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { getMembers, assignRole, removeRole, kickMember, banMember, getRoles, DiscordMember, DiscordRole } from '../../lib/discord';
+import { supabase } from '../../lib/supabase';
 import PageMeta from '../../components/common/PageMeta';
 
 export default function MembersPage() {
   const [members, setMembers] = useState<DiscordMember[]>([]);
   const [roles, setRoles] = useState<DiscordRole[]>([]);
+  const [verifiedUsers, setVerifiedUsers] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedMember, setSelectedMember] = useState<DiscordMember | null>(null);
@@ -17,12 +19,19 @@ export default function MembersPage() {
   async function loadData() {
     setLoading(true);
     try {
-      const [membersData, rolesData] = await Promise.all([
+      const [membersData, rolesData, verifiedData] = await Promise.all([
         getMembers(),
-        getRoles()
+        getRoles(),
+        supabase.from('discord_users').select('user_id')
       ]);
       setMembers(membersData.members);
       setRoles(rolesData.roles);
+      
+      // Create set of verified user IDs
+      const verifiedIds = new Set<string>(
+        (verifiedData.data || []).map((u: any) => u.user_id)
+      );
+      setVerifiedUsers(verifiedIds);
     } catch (error) {
       console.error('Failed to load data:', error);
     } finally {
@@ -143,13 +152,16 @@ export default function MembersPage() {
                   <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
                     <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Member</th>
                     <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">User ID</th>
+                    <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Verified</th>
                     <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Roles</th>
                     <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Joined</th>
                     <th className="px-6 py-4 font-medium text-gray-500 dark:text-gray-400">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredMembers.map((member) => (
+                  {filteredMembers.map((member) => {
+                    const isVerified = verifiedUsers.has(member.id);
+                    return (
                     <tr
                       key={member.id}
                       className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer"
@@ -174,6 +186,17 @@ export default function MembersPage() {
                       </td>
                       <td className="px-6 py-4 font-mono text-xs text-gray-500 dark:text-gray-400">
                         {member.id}
+                      </td>
+                      <td className="px-6 py-4">
+                        {isVerified ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                            ✓ Verified
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400">
+                            ✗ Not Verified
+                          </span>
+                        )}
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex flex-wrap gap-1">
@@ -208,7 +231,8 @@ export default function MembersPage() {
                         </button>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
