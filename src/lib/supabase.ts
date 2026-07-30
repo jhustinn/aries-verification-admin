@@ -75,7 +75,7 @@ export async function updateTicketStatus(
     throw error;
   }
 
-  // If approved, also create player record
+  // If approved, create user + player records
   if (status === 'APPROVED') {
     const { data: ticket } = await supabase
       .from('verification_tickets')
@@ -84,7 +84,15 @@ export async function updateTicketStatus(
       .single();
 
     if (ticket) {
-      // Check if player exists
+      // 1. Upsert discord_users
+      await supabase
+        .from('discord_users')
+        .upsert({
+          user_id: ticket.user_id,
+          username: ticket.player_name || ticket.in_game_name || 'Unknown'
+        }, { onConflict: 'user_id' });
+
+      // 2. Upsert verified_players
       const { data: existingPlayer } = await supabase
         .from('verified_players')
         .select('player_id')
