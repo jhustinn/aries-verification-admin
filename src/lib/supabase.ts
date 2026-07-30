@@ -64,14 +64,22 @@ export async function updateTicketStatus(
   ticketId: string,
   status: 'APPROVED' | 'REJECTED'
 ) {
-  const { error } = await supabase
-    .from('verification_tickets')
-    .update({ ticket_status: status })
-    .eq('ticket_id', ticketId);
+  // Use bot API to update status (triggers player creation on approval)
+  const BOT_API_URL = 'https://f31abf2a-3472-4eb6-ada0-131201065074-00-3ese77mjsce3q.sisko.replit.dev';
+  const API_KEY = 'aries-admin-2024';
 
-  if (error) {
-    console.error('Error updating ticket:', error);
-    throw error;
+  const response = await fetch(`${BOT_API_URL}/api/discord/tickets/${ticketId}/status`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': API_KEY,
+    },
+    body: JSON.stringify({ status }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Request failed' }));
+    throw new Error(error.error || 'Failed to update ticket');
   }
 }
 
