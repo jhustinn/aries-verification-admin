@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getTeams, deleteTeam } from '../../lib/clan';
+import { getTeams, createTeam, deleteTeam } from '../../lib/clan';
 import PageMeta from '../../components/common/PageMeta';
 
 interface Team {
@@ -10,13 +10,22 @@ interface Team {
   max_members: number;
   captain_player_id: string;
   is_active: boolean;
-  members?: any[];
   created_at: string;
 }
+
+const TIERS = ['MAIN', 'SECONDARY', 'ACADEMY', 'RESERVE'];
 
 export default function TeamsPage() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [formData, setFormData] = useState({
+    team_name: '',
+    team_tier: 'MAIN',
+    description: '',
+    max_members: 5,
+  });
 
   useEffect(() => {
     loadTeams();
@@ -31,6 +40,22 @@ export default function TeamsPage() {
       console.error('Failed to load teams:', error);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleCreate(e: React.FormEvent) {
+    e.preventDefault();
+    setCreating(true);
+    try {
+      await createTeam(formData);
+      setShowCreateModal(false);
+      setFormData({ team_name: '', team_tier: 'MAIN', description: '', max_members: 5 });
+      await loadTeams();
+    } catch (error) {
+      console.error('Failed to create team:', error);
+      alert('Failed to create team. Check console for details.');
+    } finally {
+      setCreating(false);
     }
   }
 
@@ -65,10 +90,12 @@ export default function TeamsPage() {
             <p className="text-gray-500 dark:text-gray-400">{teams.length} teams</p>
           </div>
           <div className="flex gap-2">
-            <button className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">
+            <button onClick={() => setShowCreateModal(true)}
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">
               + Create Team
             </button>
-            <button onClick={loadTeams} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300">
+            <button onClick={loadTeams}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300">
               Refresh
             </button>
           </div>
@@ -91,23 +118,21 @@ export default function TeamsPage() {
                   </span>
                 </div>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">{team.description || 'No description'}</p>
-                <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
+                <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400 mb-4">
                   <span>Max: {team.max_members} members</span>
                   <span className={team.is_active ? 'text-green-600' : 'text-red-600'}>
                     {team.is_active ? 'Active' : 'Inactive'}
                   </span>
                 </div>
-                <div className="mt-4 flex gap-2">
+                <div className="flex gap-2">
                   <button className="flex-1 px-3 py-2 text-xs font-medium text-blue-600 bg-blue-100 rounded hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400">
                     View
                   </button>
                   <button className="flex-1 px-3 py-2 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300">
                     Edit
                   </button>
-                  <button
-                    onClick={() => handleDelete(team.team_id, team.team_name)}
-                    className="flex-1 px-3 py-2 text-xs font-medium text-red-600 bg-red-100 rounded hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400"
-                  >
+                  <button onClick={() => handleDelete(team.team_id, team.team_name)}
+                    className="flex-1 px-3 py-2 text-xs font-medium text-red-600 bg-red-100 rounded hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400">
                     Delete
                   </button>
                 </div>
@@ -119,6 +144,56 @@ export default function TeamsPage() {
         {!loading && teams.length === 0 && (
           <div className="text-center py-12">
             <p className="text-gray-500 dark:text-gray-400">No teams found. Create your first team!</p>
+          </div>
+        )}
+
+        {/* Create Modal */}
+        {showCreateModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Create New Team</h3>
+                <button onClick={() => setShowCreateModal(false)} className="text-gray-500 hover:text-gray-700 dark:text-gray-400">✕</button>
+              </div>
+              <form onSubmit={handleCreate} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Team Name</label>
+                  <input type="text" required value={formData.team_name}
+                    onChange={(e) => setFormData({ ...formData, team_name: e.target.value })}
+                    placeholder="e.g., Alpha, Bravo"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tier</label>
+                  <select value={formData.team_tier}
+                    onChange={(e) => setFormData({ ...formData, team_tier: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    {TIERS.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+                  <textarea value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    placeholder="Team description..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white" rows={3} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Max Members</label>
+                  <input type="number" min="1" max="20" value={formData.max_members}
+                    onChange={(e) => setFormData({ ...formData, max_members: parseInt(e.target.value) || 5 })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                </div>
+                <div className="flex gap-2 justify-end pt-4">
+                  <button type="button" onClick={() => setShowCreateModal(false)}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300">Cancel</button>
+                  <button type="submit" disabled={creating}
+                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                    {creating ? 'Creating...' : 'Create Team'}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         )}
       </div>

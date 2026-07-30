@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getPlayers, deletePlayer } from '../../lib/clan';
+import { getPlayers, createPlayer, deletePlayer } from '../../lib/clan';
 import PageMeta from '../../components/common/PageMeta';
 
 interface Player {
@@ -15,12 +15,38 @@ interface Player {
   created_at: string;
 }
 
+const TIMEZONES = [
+  { value: 'Asia/Jakarta', label: 'UTC+7 - Asia/Jakarta (WIB)', offset: 'UTC+7' },
+  { value: 'Asia/Makassar', label: 'UTC+8 - Asia/Makassar (WITA)', offset: 'UTC+8' },
+  { value: 'Asia/Jayapura', label: 'UTC+9 - Asia/Jayapura (WIT)', offset: 'UTC+9' },
+  { value: 'Asia/Singapore', label: 'UTC+8 - Asia/Singapore', offset: 'UTC+8' },
+  { value: 'Asia/Tokyo', label: 'UTC+9 - Asia/Tokyo', offset: 'UTC+9' },
+  { value: 'Asia/Seoul', label: 'UTC+9 - Asia/Seoul', offset: 'UTC+9' },
+  { value: 'Europe/London', label: 'UTC+0 - Europe/London', offset: 'UTC+0' },
+  { value: 'Europe/Paris', label: 'UTC+1 - Europe/Paris', offset: 'UTC+1' },
+  { value: 'America/New_York', label: 'UTC-5 - America/New_York', offset: 'UTC-5' },
+  { value: 'America/Los_Angeles', label: 'UTC-8 - America/Los_Angeles', offset: 'UTC-8' },
+  { value: 'UTC', label: 'UTC+0 - UTC', offset: 'UTC+0' },
+];
+
+const REGIONS = ['ASIA', 'EU', 'NA', 'SA', 'OCEANIA', 'AFRICA'];
+
 export default function PlayersPage() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterRegion, setFilterRegion] = useState('ALL');
   const [filterStatus, setFilterStatus] = useState('ALL');
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [formData, setFormData] = useState({
+    player_id: '',
+    player_name: '',
+    player_level: 1,
+    clan_tag: 'ARIES',
+    timezone: 'Asia/Jakarta',
+    region: 'ASIA',
+  });
 
   useEffect(() => {
     loadPlayers();
@@ -35,6 +61,27 @@ export default function PlayersPage() {
       console.error('Failed to load players:', error);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleCreate(e: React.FormEvent) {
+    e.preventDefault();
+    setCreating(true);
+    try {
+      const tz = TIMEZONES.find(t => t.value === formData.timezone);
+      await createPlayer({
+        ...formData,
+        player_level: parseInt(formData.player_level.toString()),
+        timezone_offset: tz?.offset || 'UTC+0',
+      });
+      setShowCreateModal(false);
+      setFormData({ player_id: '', player_name: '', player_level: 1, clan_tag: 'ARIES', timezone: 'Asia/Jakarta', region: 'ASIA' });
+      await loadPlayers();
+    } catch (error) {
+      console.error('Failed to create player:', error);
+      alert('Failed to create player. Check console for details.');
+    } finally {
+      setCreating(false);
     }
   }
 
@@ -66,9 +113,7 @@ export default function PlayersPage() {
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Players</h2>
-            <p className="text-gray-500 dark:text-gray-400">
-              {players.length} verified players
-            </p>
+            <p className="text-gray-500 dark:text-gray-400">{players.length} verified players</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <input
@@ -78,29 +123,25 @@ export default function PlayersPage() {
               onChange={(e) => setSearch(e.target.value)}
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
             />
-            <select
-              value={filterRegion}
-              onChange={(e) => setFilterRegion(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-            >
+            <select value={filterRegion} onChange={(e) => setFilterRegion(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
               <option value="ALL">All Regions</option>
               {regions.map(r => <option key={r} value={r}>{r}</option>)}
             </select>
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-            >
+            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
               <option value="ALL">All Status</option>
               <option value="ACTIVE">Active</option>
               <option value="INACTIVE">Inactive</option>
               <option value="LEFT_CLAN">Left Clan</option>
               <option value="BANNED">Banned</option>
             </select>
-            <button
-              onClick={loadPlayers}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
-            >
+            <button onClick={() => setShowCreateModal(true)}
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">
+              + Add Player
+            </button>
+            <button onClick={loadPlayers}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300">
               Refresh
             </button>
           </div>
@@ -109,9 +150,7 @@ export default function PlayersPage() {
         {loading ? (
           <div className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03]">
             <div className="animate-pulse space-y-4">
-              {[...Array(10)].map((_, i) => (
-                <div key={i} className="h-16 bg-gray-200 rounded dark:bg-gray-700"></div>
-              ))}
+              {[...Array(10)].map((_, i) => <div key={i} className="h-16 bg-gray-200 rounded dark:bg-gray-700"></div>)}
             </div>
           </div>
         ) : (
@@ -144,21 +183,13 @@ export default function PlayersPage() {
                           player.status === 'ACTIVE' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
                           player.status === 'BANNED' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' :
                           'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
-                        }`}>
-                          {player.status}
-                        </span>
+                        }`}>{player.status}</span>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex gap-2">
-                          <button className="px-3 py-1 text-xs font-medium text-blue-600 bg-blue-100 rounded hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400">
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDelete(player.player_id, player.player_name)}
-                            className="px-3 py-1 text-xs font-medium text-red-600 bg-red-100 rounded hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400"
-                          >
-                            Delete
-                          </button>
+                          <button className="px-3 py-1 text-xs font-medium text-blue-600 bg-blue-100 rounded hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400">Edit</button>
+                          <button onClick={() => handleDelete(player.player_id, player.player_name)}
+                            className="px-3 py-1 text-xs font-medium text-red-600 bg-red-100 rounded hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400">Delete</button>
                         </div>
                       </td>
                     </tr>
@@ -166,11 +197,73 @@ export default function PlayersPage() {
                 </tbody>
               </table>
             </div>
-            {filteredPlayers.length === 0 && (
-              <div className="text-center py-12">
-                <p className="text-gray-500 dark:text-gray-400">No players found</p>
+            {filteredPlayers.length === 0 && <div className="text-center py-12"><p className="text-gray-500 dark:text-gray-400">No players found</p></div>}
+          </div>
+        )}
+
+        {/* Create Modal */}
+        {showCreateModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Add New Player</h3>
+                <button onClick={() => setShowCreateModal(false)} className="text-gray-500 hover:text-gray-700 dark:text-gray-400">✕</button>
               </div>
-            )}
+              <form onSubmit={handleCreate} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Player ID (Hex)</label>
+                  <input type="text" required value={formData.player_id}
+                    onChange={(e) => setFormData({ ...formData, player_id: e.target.value })}
+                    placeholder="e.g., 8B38C96F59232BD0"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Player Name</label>
+                  <input type="text" required value={formData.player_name}
+                    onChange={(e) => setFormData({ ...formData, player_name: e.target.value })}
+                    placeholder="e.g., LEGACΨ"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Level</label>
+                    <input type="number" min="1" max="100" value={formData.player_level}
+                      onChange={(e) => setFormData({ ...formData, player_level: parseInt(e.target.value) || 1 })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Clan Tag</label>
+                    <input type="text" value={formData.clan_tag}
+                      onChange={(e) => setFormData({ ...formData, clan_tag: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Timezone</label>
+                  <select value={formData.timezone}
+                    onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    {TIMEZONES.map(tz => <option key={tz.value} value={tz.value}>{tz.label}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Region</label>
+                  <select value={formData.region}
+                    onChange={(e) => setFormData({ ...formData, region: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    {REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
+                  </select>
+                </div>
+                <div className="flex gap-2 justify-end pt-4">
+                  <button type="button" onClick={() => setShowCreateModal(false)}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300">Cancel</button>
+                  <button type="submit" disabled={creating}
+                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                    {creating ? 'Creating...' : 'Create Player'}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         )}
       </div>
