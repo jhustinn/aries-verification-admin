@@ -37,14 +37,19 @@ const navItems: NavItem[] = [
     ],
   },
   {
+    icon: <UserCircleIcon />,
+    name: "Clan",
+    subItems: [
+      { name: "Players", path: "/players", pro: false },
+      { name: "Teams", path: "/teams", pro: false },
+      { name: "Wars", path: "/wars", pro: false },
+      { name: "Seasons", path: "/seasons", pro: false },
+    ],
+  },
+  {
     icon: <CalenderIcon />,
     name: "Calendar",
     path: "/calendar",
-  },
-  {
-    icon: <UserCircleIcon />,
-    name: "User Profile",
-    path: "/profile",
   },
   {
     icon: <PlugInIcon />,

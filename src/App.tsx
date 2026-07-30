@@ -22,6 +22,10 @@ import Home from "./pages/Dashboard/Home";
 import TicketsPage from "./pages/Tickets";
 import UsersPage from "./pages/Users";
 import MembersPage from "./pages/Members";
+import PlayersPage from "./pages/Players";
+import TeamsPage from "./pages/Teams";
+import WarsPage from "./pages/Wars";
+import SeasonsPage from "./pages/Seasons";
 import SettingsPage from "./pages/Settings";
 
 export default function App() {
@@ -36,6 +40,10 @@ export default function App() {
             <Route path="/tickets" element={<TicketsPage />} />
             <Route path="/users" element={<UsersPage />} />
             <Route path="/members" element={<MembersPage />} />
+            <Route path="/players" element={<PlayersPage />} />
+            <Route path="/teams" element={<TeamsPage />} />
+            <Route path="/wars" element={<WarsPage />} />
+            <Route path="/seasons" element={<SeasonsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
 
             {/* Others Page */}
