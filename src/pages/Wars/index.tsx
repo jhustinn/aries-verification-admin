@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getWars, createWar, deleteWar, ClanWar } from '../../lib/database';
 import PageMeta from '../../components/common/PageMeta';
+import Modal from '../../components/common/Modal';
 
 interface War extends ClanWar {
   team?: { team_id: string; team_name: string };
@@ -166,69 +167,61 @@ export default function WarsPage() {
         )}
 
         {/* Create Modal */}
-        {showCreateModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Create New War</h3>
-                <button onClick={() => setShowCreateModal(false)} className="text-gray-500 hover:text-gray-700 dark:text-gray-400">✕</button>
-              </div>
-              <form onSubmit={handleCreate} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Opponent Name</label>
-                  <input type="text" required value={formData.opponent_name}
-                    onChange={(e) => setFormData({ ...formData, opponent_name: e.target.value })}
-                    placeholder="e.g., DragonClan"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Opponent Team (optional)</label>
-                  <input type="text" value={formData.opponent_team}
-                    onChange={(e) => setFormData({ ...formData, opponent_team: e.target.value })}
-                    placeholder="e.g., DragonAlpha"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">War Type</label>
-                    <select value={formData.war_type}
-                      onChange={(e) => setFormData({ ...formData, war_type: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                      {WAR_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Team Size</label>
-                    <input type="number" min="1" max="10" value={formData.team_size}
-                      onChange={(e) => setFormData({ ...formData, team_size: parseInt(e.target.value) || 5 })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Scheduled At (optional)</label>
-                  <input type="datetime-local" value={formData.scheduled_at}
-                    onChange={(e) => setFormData({ ...formData, scheduled_at: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Strategy Notes (optional)</label>
-                  <textarea value={formData.strategy_notes}
-                    onChange={(e) => setFormData({ ...formData, strategy_notes: e.target.value })}
-                    placeholder="War strategy..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white" rows={3} />
-                </div>
-                <div className="flex gap-2 justify-end pt-4">
-                  <button type="button" onClick={() => setShowCreateModal(false)}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300">Cancel</button>
-                  <button type="submit" disabled={creating}
-                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50">
-                    {creating ? 'Creating...' : 'Create War'}
-                  </button>
-                </div>
-              </form>
+        <Modal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} title="Create New War">
+          <form onSubmit={handleCreate} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Opponent Name</label>
+              <input type="text" required value={formData.opponent_name}
+                onChange={(e) => setFormData({ ...formData, opponent_name: e.target.value })}
+                placeholder="e.g., DragonClan"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
             </div>
-          </div>
-        )}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Opponent Team (optional)</label>
+              <input type="text" value={formData.opponent_team}
+                onChange={(e) => setFormData({ ...formData, opponent_team: e.target.value })}
+                placeholder="e.g., DragonAlpha"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">War Type</label>
+                <select value={formData.war_type}
+                  onChange={(e) => setFormData({ ...formData, war_type: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                  {WAR_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Team Size</label>
+                <input type="number" min="1" max="10" value={formData.team_size}
+                  onChange={(e) => setFormData({ ...formData, team_size: parseInt(e.target.value) || 5 })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Scheduled At (optional)</label>
+              <input type="datetime-local" value={formData.scheduled_at}
+                onChange={(e) => setFormData({ ...formData, scheduled_at: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Strategy Notes (optional)</label>
+              <textarea value={formData.strategy_notes}
+                onChange={(e) => setFormData({ ...formData, strategy_notes: e.target.value })}
+                placeholder="War strategy..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white" rows={3} />
+            </div>
+            <div className="flex gap-2 justify-end pt-4">
+              <button type="button" onClick={() => setShowCreateModal(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300">Cancel</button>
+              <button type="submit" disabled={creating}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                {creating ? 'Creating...' : 'Create War'}
+              </button>
+            </div>
+          </form>
+        </Modal>
       </div>
     </>
   );

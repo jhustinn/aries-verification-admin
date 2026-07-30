@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { getPlayers, createPlayer, deletePlayer } from '../../lib/database';
 import { getUsers } from '../../lib/supabase';
 import PageMeta from '../../components/common/PageMeta';
+import Modal from '../../components/common/Modal';
 
 interface Player {
   player_id: string;
@@ -245,85 +246,77 @@ export default function PlayersPage() {
         )}
 
         {/* Create Modal */}
-        {showCreateModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Add New Player</h3>
-                <button onClick={() => setShowCreateModal(false)} className="text-gray-500 hover:text-gray-700 dark:text-gray-400">✕</button>
+        <Modal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} title="Add New Player">
+          <form onSubmit={handleCreate} className="space-y-4">
+            {/* Select from verified Discord users */}
+            {availableUsers.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Select Verified Discord User (Optional)</label>
+                <select value={formData.discord_user_id}
+                  onChange={(e) => handleSelectUser(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                  <option value="">-- Select User --</option>
+                  {availableUsers.map(user => (
+                    <option key={user.user_id} value={user.user_id}>{user.username} ({user.user_id})</option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">Auto-fills Player Name from Discord username</p>
               </div>
-              <form onSubmit={handleCreate} className="space-y-4">
-                {/* Select from verified Discord users */}
-                {availableUsers.length > 0 && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Select Verified Discord User (Optional)</label>
-                    <select value={formData.discord_user_id}
-                      onChange={(e) => handleSelectUser(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                      <option value="">-- Select User --</option>
-                      {availableUsers.map(user => (
-                        <option key={user.user_id} value={user.user_id}>{user.username} ({user.user_id})</option>
-                      ))}
-                    </select>
-                    <p className="text-xs text-gray-500 mt-1">Auto-fills Player Name from Discord username</p>
-                  </div>
-                )}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Player ID (Hex from game)</label>
-                  <input type="text" required value={formData.player_id}
-                    onChange={(e) => setFormData({ ...formData, player_id: e.target.value })}
-                    placeholder="e.g., 8B38C96F59232BD0"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Player Name</label>
-                  <input type="text" required value={formData.player_name}
-                    onChange={(e) => setFormData({ ...formData, player_name: e.target.value })}
-                    placeholder="e.g., LEGACΨ"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Level</label>
-                    <input type="number" min="1" max="100" value={formData.player_level}
-                      onChange={(e) => setFormData({ ...formData, player_level: parseInt(e.target.value) || 1 })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Clan Tag</label>
-                    <input type="text" value={formData.clan_tag}
-                      onChange={(e) => setFormData({ ...formData, clan_tag: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Timezone</label>
-                  <select value={formData.timezone}
-                    onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                    {TIMEZONES.map(tz => <option key={tz.value} value={tz.value}>{tz.label}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Region</label>
-                  <select value={formData.region}
-                    onChange={(e) => setFormData({ ...formData, region: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                    {REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
-                  </select>
-                </div>
-                <div className="flex gap-2 justify-end pt-4">
-                  <button type="button" onClick={() => setShowCreateModal(false)}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300">Cancel</button>
-                  <button type="submit" disabled={creating}
-                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50">
-                    {creating ? 'Creating...' : 'Create Player'}
-                  </button>
-                </div>
-              </form>
+            )}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Player ID (Hex from game)</label>
+              <input type="text" required value={formData.player_id}
+                onChange={(e) => setFormData({ ...formData, player_id: e.target.value })}
+                placeholder="e.g., 8B38C96F59232BD0"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
             </div>
-          </div>
-        )}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Player Name</label>
+              <input type="text" required value={formData.player_name}
+                onChange={(e) => setFormData({ ...formData, player_name: e.target.value })}
+                placeholder="e.g., LEGACΨ"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Level</label>
+                <input type="number" min="1" max="100" value={formData.player_level}
+                  onChange={(e) => setFormData({ ...formData, player_level: parseInt(e.target.value) || 1 })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Clan Tag</label>
+                <input type="text" value={formData.clan_tag}
+                  onChange={(e) => setFormData({ ...formData, clan_tag: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Timezone</label>
+              <select value={formData.timezone}
+                onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                {TIMEZONES.map(tz => <option key={tz.value} value={tz.value}>{tz.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Region</label>
+              <select value={formData.region}
+                onChange={(e) => setFormData({ ...formData, region: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                {REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
+              </select>
+            </div>
+            <div className="flex gap-2 justify-end pt-4">
+              <button type="button" onClick={() => setShowCreateModal(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300">Cancel</button>
+              <button type="submit" disabled={creating}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                {creating ? 'Creating...' : 'Create Player'}
+              </button>
+            </div>
+          </form>
+        </Modal>
       </div>
     </>
   );
