@@ -64,22 +64,61 @@ export async function updateTicketStatus(
   ticketId: string,
   status: 'APPROVED' | 'REJECTED'
 ) {
-  // Use bot API to update status (triggers player creation on approval)
-  const BOT_API_URL = 'https://f31abf2a-3472-4eb6-ada0-131201065074-00-3ese77mjsce3q.sisko.replit.dev';
-  const API_KEY = 'aries-admin-2024';
+  // Update ticket status directly via Supabase
+  const { error } = await supabase
+    .from('verification_tickets')
+    .update({ ticket_status: status })
+    .eq('ticket_id', ticketId);
 
-  const response = await fetch(`${BOT_API_URL}/api/discord/tickets/${ticketId}/status`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': API_KEY,
-    },
-    body: JSON.stringify({ status }),
-  });
+  if (error) {
+    console.error('Error updating ticket:', error);
+    throw error;
+  }
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Request failed' }));
-    throw new Error(error.error || 'Failed to update ticket');
+  // If approved, also create player record
+  if (status === 'APPROVED') {
+    const { data: ticket } = await supabase
+      .from('verification_tickets')
+      .select('*')
+      .eq('ticket_id', ticketId)
+      .single();
+
+    if (ticket) {
+      // Check if player exists
+      const { data: existingPlayer } = await supabase
+        .from('verified_players')
+        .select('player_id')
+        .eq('discord_user_id', ticket.user_id)
+        .single();
+
+      const playerData = {
+        player_id: ticket.player_id || `discord_${ticket.user_id}`,
+        discord_user_id: ticket.user_id,
+        player_name: ticket.player_name || ticket.in_game_name,
+        player_level: ticket.player_level || 1,
+        clan_tag: 'ARIES',
+        timezone: 'UTC',
+        timezone_offset: 'UTC+0',
+        region: 'UNKNOWN',
+        status: 'ACTIVE',
+        verified_at: new Date().toISOString(),
+        ticket_id: ticket.ticket_id
+      };
+
+      if (existingPlayer) {
+        await supabase
+          .from('verified_players')
+          .update({
+            player_name: playerData.player_name,
+            player_level: playerData.player_level,
+            ticket_id: ticket.ticket_id,
+            updated_at: new Date().toISOString()
+          })
+          .eq('player_id', existingPlayer.player_id);
+      } else {
+        await supabase.from('verified_players').insert(playerData);
+      }
+    }
   }
 }
 
